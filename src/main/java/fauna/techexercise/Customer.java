@@ -21,19 +21,19 @@ import com.faunadb.client.types.Field;
 public class Customer {
     static final Field<Customer> CUSTOMER_FIELD = Field.at("data").to(Customer.class);
 
-    @FaunaField private String customerId;
+    @FaunaField private String customerID;
     @FaunaField private String companyName;
     @FaunaField private String contactName;
     @FaunaField private String contactTitle;
     @FaunaField private Address address;
 
     @FaunaConstructor
-    public Customer(@FaunaField("customerId") String customerId,
+    public Customer(@FaunaField("customerID") String customerID,
                     @FaunaField("companyName") String companyName,
                     @FaunaField("contactName") String contactName,
                     @FaunaField("contactTitle") String contactTitle,
                     @FaunaField("address") Address address) {
-        this.customerId = customerId;
+        this.customerID = customerID;
         this.companyName = companyName;
         this.contactName = contactName;
         this.contactTitle = contactTitle;
@@ -41,20 +41,18 @@ public class Customer {
     }
 
     public Customer () {
-        this.customerId = "";
+        this.customerID = "";
         this.companyName = "";
         this.contactName = "";
         this.contactTitle = "";
         this.address = new Address();
     }
 
-    public String getCustomerId() {
-        return customerId;
+    public String getCustomerID() {
+        return customerID;
     }
 
-    public void setCustomerId(String customerId) {
-        this.customerId = customerId;
-    }
+    public void setCustomerID(String customerID) { this.customerID = customerID; }
 
     public String getCompanyName() {
         return companyName;

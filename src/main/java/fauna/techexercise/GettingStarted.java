@@ -21,9 +21,15 @@ package fauna.techexercise;
  *  you are a Mac user, you can install it using brew with the command:
  *  `brew install fauna-shell`.
  *
- *  In general is is considered bac practice to store data in the root of your
+ *  In general it is considered bad practice to store data in the root of your
  *  fauna account. So below we are going to connect to the fauna root and then
  *  create a child database and get a new access key specific to it.
+ *
+ *  If you were to do this through the Fauna command line tool the equivalent
+ *  commands are:
+ *
+ *  $ fauna create-database Northwind
+ *  $ fauna create-key Northwind
  *****************************************************************************/
 
 /*
@@ -49,6 +55,19 @@ import com.faunadb.client.types.*;
 import static com.faunadb.client.query.Language.*;
 
 public class GettingStarted {
+    /*
+     * Connection variables:
+     * Endpoint will depend ow whether you are using cloud or local
+     *  - https://db.fauuna.com -- for Fauna DB Cloud
+     *  - http://localhost:8443 -- if you are using a local docker instance
+     *
+     * Secret is the DD specific secret that you generated either from the
+     * GettingStarted.java execution or the running the above fauna command
+     * line commands.
+     */
+//    private static String endpoint = "https://db.fauna.com";
+    private static String endpoint = "http://localhost:8443";
+    private static String secret = "secret";
 
     private static final Logger logger = LoggerFactory.getLogger(GettingStarted.class);
 
@@ -74,8 +93,8 @@ public class GettingStarted {
          *  - substitute your secret for "secret" below
          */
         FaunaClient adminClient = FaunaClient.builder()
-                .withEndpoint("https://db.fauna.com")
-                .withSecret("fnAC86vPkUACDHV_whs3sTHWG-xL7m9rPc8OK6Ik")
+                .withEndpoint(endpoint)
+                .withSecret(secret)
                 .build();
         logger.info("Succesfully connected to FaunaDB as Admin!");
 

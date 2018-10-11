@@ -15,8 +15,26 @@
 package fauna.techexercise;
 
 /******************************************************************************
- *  This part of the exercise creates the schema or classes and indexes for
- *  customers. The it loads the instances from teh JSON file into the DB.
+ *  This part of the exercise creates the classes and class level indexes for
+ *  the Northwind JSON data. This is an example of how you could do this in
+ *  code. Alternatively you could accomplish the same through the Fauna
+ *  command line tool. For Example you could use the following commands:
+ *
+ *  $ fauna create-database Northwind
+ *  $ fauna create-key Northwind
+ *  $ fauna shell Northwind
+ *  Northwind> CreateClass({ name: “categories” })
+ *  Northwind> CreateIndex({name: "categories_all", source: Class("categories"), unique: true})
+ *
+ *  Northwind> CreateClass({ name: “products” })
+ *  Northwind> CreateIndex({name: "products_all", source: Class("products"), unique: true})
+ *
+ *  Northwind> CreateClass({ name: “customers” })
+ *  Northwind> CreateIndex({name: "customers_all", source: Class("customers"), unique: true})
+ *
+ *  With those command successfully executed you can then load the data in a
+ *  manner of your choosing including the faunadb-importer tool located here:
+ *  https://github.com/fauna/faunadb-importer
  *****************************************************************************/
 
 /*
@@ -46,6 +64,20 @@ import com.faunadb.client.types.*;
 import static com.faunadb.client.query.Language.*;
 
 public class DataLoading {
+    /*
+     * Connection variables:
+     * Endpoint will depend ow whether you are using cloud or local
+     *  - https://db.fauuna.com -- for Fauna DB Cloud
+     *  - http://localhost:8443 -- if you are using a local docker instance
+     *
+     * Secret is the DD specific secret that you generated either from the
+     * GettingStarted.java execution or the running the above fauna command
+     * line commands.
+     */
+//    private static String endpoint = "https://db.fauna.com";
+    private static String endpoint = "http://localhost:8443";
+    private static String secret = "fnAC9FsHMiACAHMG0pNOe93XQ9TVVdHZMZwPbFJ0";
+
     private static final Logger logger = LoggerFactory.getLogger(GettingStarted.class);
 
     private static ObjectMapper mapper = getMapper();
@@ -61,49 +93,38 @@ public class DataLoading {
         return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(value);
     }
 
-    private static void createSchema(FaunaClient client) throws Exception {
+    private static void createClass(FaunaClient client, String className) throws Exception {
         /*
-         * Create an class to hold customers
+         * Create the class to store the data instances
          */
         Value result = client.query(
-                CreateClass(Obj("name", Value("customers")))
+                CreateClass(Obj("name", Value(className)))
         ).get();
-        logger.info("Created customers class :: {}", toPrettyJson(result));
-
-        /*
-         * Create two indexes here. The first index is to query customers when you know specific id's.
-         * The second is used to query customers by range. Examples of each type of query are presented
-         * below.
-         */
-        result = client.query(
-                Arr(
-                        // This index supports primary key access. Equality constraints only
-                        CreateIndex(
-                                Obj(
-                                        "name", Value("customer_by_id"),
-                                        "source", Class(Value("customers")),
-                                        "unique", Value(true),
-                                        "terms", Arr(Obj("field", Arr(Value("data"), Value("id"))))
-                                )
-                        ),
-                        // This index will let us search for specific values. See the range query Example.
-                        CreateIndex(
-                                Obj(
-                                        "name", Value("customer_id_filter"),
-                                        "source", Class(Value("customers")),
-                                        "unique", Value(true),
-                                        "values", Arr(
-                                                Obj("field", Arr(Value("data"), Value("id"))),
-                                                Obj("field", Arr(Value("ref")))
-                                        )
-                                )
-                        )
-                )
-        ).get();
-        logger.info("Created \'customer_by_id\' index & \'customer_id_filter\' index :: {}", toPrettyJson(result));
+        logger.info("Created data class : {} :: \n{}", className, toPrettyJson(result));
     }
 
-    private static void loadCustomers(FaunaClient client, String jsonFilePath) throws Exception {
+    private static void createClassIndex(FaunaClient client, String className) throws Exception {
+        /*
+         * Create a class level index. This is really a convenience feature that lets us
+         * evaluate if the data loaded properly.
+         */
+        String classIndexName = className + "_all";
+        Value result = client.query(
+                // This index supports primary key access. Equality constraints only
+                    CreateIndex(
+                            Obj(
+                                    "name", Value(classIndexName),
+                                    "source", Class(Value(className))
+                            )
+                    )
+        ).get();
+        logger.info("Created {} index :: \n{}", classIndexName, toPrettyJson(result));
+    }
+
+    private static void loadData(FaunaClient client,
+                                 Class dataClass,
+                                 String dataTypeName,
+                                 String jsonFilePath) throws Exception {
         //
         // This is cheesy. If the file was really big you would stream it
         // I am cheating by reading the whole thing and then parsing
@@ -114,16 +135,18 @@ public class DataLoading {
         ObjectMapper objectMapper = getMapper();
         while(it.hasNext()) {
 
-            Customer customer = objectMapper.readValue(it.next().toString(), Customer.class);
+            Object data =  dataClass.newInstance();
+            data = objectMapper.readValue(it.next().toString(), dataClass);
 
             client.query(
                     Create(
-                            Class(Value("customers")),
-                            Obj("data", Value(customer))
+                            Class(Value(dataTypeName)),
+                            Obj("data", Value(data))
                     )
-            ).get();    // this makes are call Async. We could allways catch the futures and check later.
+            ).get();    // this makes the call Async. We could always catch the futures and check later.
         }
-        logger.info("Loaded {} customer records.", rootNode.size());
+        logger.info("Loaded {} {} records.", rootNode.size(), dataTypeName);
+
     }
 
     public static void main(String[] args)  throws Exception {
@@ -131,14 +154,22 @@ public class DataLoading {
          * Create the DB specific DB client using the DB specific key just created.
          */
         FaunaClient client = FaunaClient.builder()
-                .withEndpoint("https://db.fauna.com")
-                .withSecret("fnAC876gXfACDX1EPRCxzWyoc6dBcgXFUOitDsSa") // your DB specific access string goes here
+                .withEndpoint(endpoint)
+                .withSecret(secret)
                 .build();
         logger.info("Connected to FaunaDB");
 
-        createSchema(client);
+        createClass(client, "categories");
+        createClassIndex(client, "categories");
+        loadData(client, Category.class, "categories","./northwinds-json/categories.json");
 
-        loadCustomers(client, "./northwinds-json/customers.json");
+        createClass(client, "products");
+        createClassIndex(client, "products");
+        loadData(client, Product.class, "products", "./northwinds-json/products.json");
+
+        createClass(client, "customers");
+        createClassIndex(client, "customers");
+        loadData(client, Customer.class, "customers", "./northwinds-json/customers.json");
 
         //
         // Just to keep things neat and tidy, close the client connections
