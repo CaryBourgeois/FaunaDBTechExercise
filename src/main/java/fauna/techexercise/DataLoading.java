@@ -78,7 +78,7 @@ public class DataLoading {
     private static String endpoint = "http://localhost:8443";
     private static String secret = "fnAC9FsHMiACAHMG0pNOe93XQ9TVVdHZMZwPbFJ0";
 
-    private static final Logger logger = LoggerFactory.getLogger(GettingStarted.class);
+    private static final Logger logger = LoggerFactory.getLogger(DataLoading.class);
 
     private static ObjectMapper mapper = getMapper();
 
